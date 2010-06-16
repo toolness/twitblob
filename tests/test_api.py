@@ -70,6 +70,10 @@ def test_trivial_404():
     resp = app.get('/blah', status=404)
 
 @apptest
+def test_blobs_404():
+    resp = app.get('/blobs/', status=404)
+
+@apptest
 def test_post_json_blob_with_invalid_token():
     post_json('/blobs/bob',
               {'token': 'bad token',

@@ -38,6 +38,11 @@ class MozSummitApi(object):
                            [('Content-Type', 'application/json')])
             return [json.dumps(obj)]
 
+        def err_404():
+            start_response('404 Not Found',
+                           [('Content-Type', 'text/plain')])
+            return ['unknown path: %s' % path]
+
         length = int(environ.get('CONTENT_LENGTH', '0'))
         if length > self.max_body_size:
             return json_response('413 Request Entity Too Large',
@@ -56,6 +61,8 @@ class MozSummitApi(object):
                 return (obj, None)
 
         if path.startswith('/blobs/'):
+            if path == '/blobs/':
+                return err_404()
             user = path.split('/')[2]
             if method == 'POST':
                 obj, token = get_body()
@@ -76,6 +83,4 @@ class MozSummitApi(object):
                                          {'error': 'blob does not exist'})
                 return json_response('200 OK', blob['data'])
 
-        start_response('404 Not Found',
-                       [('Content-Type', 'text/plain')])
-        return ['unknown path: %s' % path]
+        return err_404()
