@@ -4,12 +4,15 @@ import wsgiref.util
 from pymongo.objectid import ObjectId
 from pymongo.errors import InvalidId
 
+DEFAULT_MAX_BODY_SIZE = 20000
+
 class MozSummitApi(object):
-    def __init__(self, twitter, db):
+    def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE):
         twitter.onsuccess = self.__twitter_onsuccess
         self.twitter = twitter
         self.db = db
         self.db.blobs.ensure_index('screen_name')
+        self.max_body_size = max_body_size
 
     def __twitter_onsuccess(self, environ, start_response):
         token = {

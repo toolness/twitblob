@@ -87,6 +87,12 @@ def test_post_json_blob_with_unauthorized_token():
               status=403)
 
 @apptest
+def test_massive_body():
+    post_json('/blobs/bob',
+              {'data': {'foo': '1' * api.max_body_size}},
+              status=413)
+
+@apptest
 def test_post_json_blob_with_no_token():
     post_json('/blobs/bob',
               {'data': {}},
