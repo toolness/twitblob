@@ -53,11 +53,10 @@ class FakeTwitter(object):
             return self.onsuccess(environ, start_response)
         raise AssertionError('unexpected path: %s' % environ['PATH_INFO'])
 
-def post_json(url, obj, ensure_success=True):
+def post_json(url, obj, **kwargs):
     resp = app.post(url, json.dumps(obj),
-                    {'Content-Type': 'application/json'})
-    if resp.json != {'success': True}:
-        raise AssertionError(repr(resp.json))
+                    {'Content-Type': 'application/json'},
+                    **kwargs)
 
 def do_login(screen_name):
     twitter.fake_screen_name = screen_name
@@ -70,10 +69,23 @@ def test_login():
     assert isinstance(do_login('bob'), basestring)
 
 @apptest
+def test_post_json_blob_with_invalid_token():
+    post_json('/blobs/bob',
+              {'token': 'bad token',
+               'data': {}},
+              status=403)
+
+@apptest
+def test_post_json_blob_with_no_token():
+    post_json('/blobs/bob',
+              {'data': {}},
+              status=403)
+
+@apptest
 def test_post_json_blob():
     blob = {'talks': {'0': 0, '1': 5}}
-    post_json('/users/bob',
+    post_json('/blobs/bob',
               {'token': do_login('bob'),
                'data': blob})
-    resp = app.get('/users/bob')
+    resp = app.get('/blobs/bob')
     assert resp.json == blob
