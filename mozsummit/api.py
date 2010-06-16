@@ -30,9 +30,19 @@ class MozSummitApi(object):
             wsgiref.util.shift_path_info(environ)
             return self.twitter(environ, start_response)
 
+        def json_response(status, obj):
+            start_response(status,
+                           [('Content-Type', 'application/json')])
+            return [json.dumps(obj)]
+
+        length = int(environ.get('CONTENT_LENGTH', '0'))
+        if length > self.max_body_size:
+            return json_response('413 Request Entity Too Large',
+                                 {'error': 'too big'})
+
         def get_body():
             f = environ['wsgi.input']
-            obj = json.loads(f.read(int(environ['CONTENT_LENGTH'])))
+            obj = json.loads(f.read(length))
             if 'token' in obj:
                 try:
                     objid = ObjectId(obj['token'])
@@ -41,11 +51,6 @@ class MozSummitApi(object):
                 return (obj, self.db.auth_tokens.find_one(objid))
             else:
                 return (obj, None)
-
-        def json_response(status, obj):
-            start_response(status,
-                           [('Content-Type', 'application/json')])
-            return [json.dumps(obj)]
 
         if path.startswith('/blobs/'):
             user = path.split('/')[2]
