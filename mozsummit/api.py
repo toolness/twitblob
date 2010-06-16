@@ -6,6 +6,14 @@ from pymongo.errors import InvalidId
 
 DEFAULT_MAX_BODY_SIZE = 20000
 
+def allow_cross_origin(func):
+    header = ('Access-Control-Allow-Origin', '*')
+    def wsgi_wrapper(self, environ, start_response):
+        def new_start_response(status, headers):
+            start_response(status, headers + [header])
+        return func(self, environ, new_start_response)
+    return wsgi_wrapper
+
 class MozSummitApi(object):
     def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE):
         twitter.onsuccess = self.__twitter_onsuccess
@@ -25,6 +33,7 @@ class MozSummitApi(object):
                         ('X-access-token', hexid)])
         return ['TODO: window.postMessage() new token.']
 
+    @allow_cross_origin
     def wsgi_app(self, environ, start_response):
         path = environ['PATH_INFO']
         method = environ['REQUEST_METHOD']

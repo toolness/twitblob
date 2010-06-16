@@ -74,6 +74,11 @@ def test_blobs_404():
     resp = app.get('/blobs/', status=404)
 
 @apptest
+def test_cross_origin_support():
+    resp = app.get('/blobs/', status=404)
+    assert resp.headers['Access-Control-Allow-Origin'] == '*'
+
+@apptest
 def test_post_json_blob_with_invalid_token():
     post_json('/blobs/bob',
               {'token': 'bad token',
