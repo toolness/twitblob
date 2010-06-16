@@ -80,6 +80,13 @@ def test_post_json_blob_with_invalid_token():
               status=403)
 
 @apptest
+def test_post_json_blob_with_incorrect_token():
+    post_json('/blobs/bob',
+              {'token': do_login('jane'),
+               'data': {}},
+              status=403)
+
+@apptest
 def test_post_json_blob_with_no_token():
     post_json('/blobs/bob',
               {'data': {}},
