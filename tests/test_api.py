@@ -69,6 +69,10 @@ def test_login():
     assert isinstance(do_login('bob'), basestring)
 
 @apptest
+def test_get_nonexistent_json_blob():
+    resp = app.get('/blobs/nonexistent', status=404)
+
+@apptest
 def test_post_json_blob_with_invalid_token():
     post_json('/blobs/bob',
               {'token': 'bad token',

@@ -63,6 +63,9 @@ class MozSummitApi(object):
                         )
             elif method == 'GET':
                 blob = self.db.blobs.find_one({'screen_name': user})
+                if blob is None:
+                    return json_response('404 Not Found',
+                                         {'error': 'blob does not exist'})
                 return json_response('200 OK', blob['data'])
 
         start_response('404 Not Found',
