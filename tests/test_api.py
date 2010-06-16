@@ -13,13 +13,6 @@ db = None
 
 conn = pymongo.Connection()
 
-def TODO_apptest(func):
-    def wrapper():
-        pass
-
-    wrapper.__name__ = func.__name__
-    return wrapper
-    
 def apptest(func):
     def wrapper():
         g = globals()
