@@ -3,7 +3,7 @@ import datetime
 
 import pymongo
 from webtest import TestApp
-from twitblob.api import TwitBlobApi
+from twitblob.api import TwitBlobApi, gentoken
 
 DBNAME = 'twitblob_test_database'
 
@@ -30,13 +30,23 @@ def apptest(func):
 
         g['twitter'] = FakeTwitter()
         g['api'] = TwitBlobApi(twitter=twitter, db=db,
-                               utcnow=TimeMachine.utcnow)
+                               utcnow=TimeMachine.utcnow,
+                               gentoken=EntropyMachine.gentoken)
         g['app'] = TestApp(api.wsgi_app)
 
         func()
 
     wrapper.__name__ = func.__name__
     return wrapper
+
+class EntropyMachine(object):
+    next = []
+
+    @classmethod
+    def gentoken(klass):
+        if klass.next:
+            return klass.next.pop()
+        return gentoken()
 
 class TimeMachine(object):
     now = datetime.datetime(2010, 6, 17, 0, 32, 33, 985904)
@@ -76,6 +86,14 @@ def do_login(screen_name):
     twitter.fake_user_id = '1'
     resp = app.get('/login/fake-callback')
     return resp.headers['X-access-token']
+
+@apptest
+def test_tokens_are_unique():
+    EntropyMachine.next[:] = ['b', 'a', 'a', 'a', 'a']
+    token1 = do_login('bob')
+    token2 = do_login('jane')
+    assert token1 == 'a'
+    assert token2 == 'b'
 
 @apptest
 def test_login_returns_postmessage_code():

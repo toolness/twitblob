@@ -1,9 +1,8 @@
 import simplejson as json
 import wsgiref.util
 import datetime
-
-from pymongo.objectid import ObjectId
-from pymongo.errors import InvalidId
+from base64 import urlsafe_b64encode
+from os import urandom
 
 DEFAULT_MAX_BODY_SIZE = 20000
 
@@ -18,30 +17,42 @@ def allow_cross_origin(func):
         return func(self, environ, new_start_response)
     return wsgi_wrapper
 
+def gentoken():
+    # Generate a 256-bit key, but add a byte so we don't have
+    # an annoying '=' in the string.
+    return urlsafe_b64encode(urandom(256/8+1))
+
 class TwitBlobApi(object):
     def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE,
                  token_lifetime=DEFAULT_TOKEN_LIFETIME,
-                 utcnow=datetime.datetime.utcnow):
+                 utcnow=datetime.datetime.utcnow,
+                 gentoken=gentoken):
         twitter.onsuccess = self.__twitter_onsuccess
         self.twitter = twitter
         self.db = db
         self.db.blobs.ensure_index('screen_name')
+        self.db.auth_tokens.ensure_index('id')
         self.utcnow = utcnow
+        self.gentoken = gentoken
         self.token_lifetime = token_lifetime
         self.max_body_size = max_body_size
 
     def __twitter_onsuccess(self, environ, start_response):
+        token_id = self.gentoken()
+        while self.db.auth_tokens.find_one({'id': token_id}):
+            token_id = self.gentoken()
         token = {
+            'id': token_id,
             'screen_name': environ['oauth.access_token']['screen_name'],
             'user_id': environ['oauth.access_token']['user_id'],
             'date': self.utcnow()
             }
-        hexid = str(self.db.auth_tokens.insert(token))
+        self.db.auth_tokens.insert(token)
         start_response('200 OK',
                        [('Content-Type', 'text/html'),
-                        ('X-access-token', hexid)])
+                        ('X-access-token', token['id'])])
         client_token = {
-            'token': hexid,
+            'token': token['id'],
             'screen_name': token['screen_name']
             }
         script = "window.opener.postMessage(JSON.stringify(%s), '*');" % (
@@ -84,16 +95,12 @@ class TwitBlobApi(object):
             except ValueError:
                 return (None, None)
             if 'token' in obj:
-                try:
-                    objid = ObjectId(obj['token'])
-                except InvalidId:
-                    return (obj, None)
-                token = self.db.auth_tokens.find_one(objid)
+                token = self.db.auth_tokens.find_one({'id': obj['token']})
                 if token is None:
                     return (obj, None)
                 if self.utcnow() - token['date'] > self.token_lifetime:
                     token = None
-                    self.db.auth_tokens.remove(objid)
+                    self.db.auth_tokens.remove({'id': obj['token']})
                 return (obj, token)
             else:
                 return (obj, None)
