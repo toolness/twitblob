@@ -30,7 +30,7 @@ def apptest(func):
 
         g['twitter'] = FakeTwitter()
         g['api'] = TwitBlobApi(twitter=twitter, db=db,
-                                utcnow=TimeMachine.utcnow)
+                               utcnow=TimeMachine.utcnow)
         g['app'] = TestApp(api.wsgi_app)
 
         func()
