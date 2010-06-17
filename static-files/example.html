@@ -1,0 +1,91 @@
+<html>
+<head>
+  <title>My Twittery App</title>
+  <style>
+  .button {
+    cursor: pointer;
+  }
+  div.button:hover {
+    background: yellow;
+  }
+  </style>
+</head>
+<body>
+<form>
+  <p>server: <input type="text" id="server" value="http://localhost:8000"></p>
+  <p>token: <input type="text" id="token"/></p>
+  <p>screen name: <input type="text" id="screen_name"/></p>
+  <textarea id="notes"></textarea>
+<form>
+<div class="button" onclick="openLogin();">click here to login</div>
+<div class="button" onclick="getNotes();">get notes</div>
+<div class="button" onclick="setNotes();">set notes</div>
+<pre id="log"></pre>
+<script>
+var popup;
+
+function baseURL() {
+  return $("#server").value;
+}
+
+function $(sel) { return document.querySelector(sel); }
+
+function openLogin() {
+  popup = window.open(baseURL() + '/login/', 'login',
+                      'width=640,height=480');
+}
+
+function log(msg) {
+  $("#log").textContent += msg + "\n";
+}
+
+function getNotes() {
+  var req = new XMLHttpRequest();
+  var url = baseURL() + '/blobs/' + $("#screen_name").value;
+  req.open('GET', url);
+  log("sending GET " + url);
+  req.onreadystatechange = function() {
+    if (req.readyState == 4) {
+      log("received " + req.status + " " + req.statusText + " " +
+          req.responseText);
+      if (req.status == 200) {
+        var obj = JSON.parse(req.responseText);
+        $("#notes").value = obj.notes;
+      }
+    }
+  };
+  req.send(null);
+}
+
+function setNotes() {
+  var req = new XMLHttpRequest();
+  var body = {
+    'token': $("#token").value,
+    'data': {
+      'notes': $("#notes").value
+    }
+  };
+  body = JSON.stringify(body);
+  var url = baseURL() + '/blobs/' + $("#screen_name").value;
+  log("sending POST " + url + " " + body);
+  req.open('POST', url);
+  req.onreadystatechange = function() {
+    if (req.readyState == 4)
+      log("received " + req.status + " " + req.statusText + " " +
+          req.responseText);
+  }
+  req.send(body);
+}
+
+window.addEventListener('message', function(event) {
+  var info = JSON.parse(event.data);
+
+  $("#token").value = info.token;
+  $("#screen_name").value = info.screen_name;
+
+  popup.close();
+  popup = null;
+}, false);
+</script>
+</body>
+</html>
