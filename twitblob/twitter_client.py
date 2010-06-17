@@ -1,5 +1,5 @@
 import simplejson as json
-import urlparse
+from cgi import parse_qsl
 import urllib
 from wsgiref.util import application_uri
 
@@ -38,7 +38,7 @@ class TwitterOauthClientApp(object):
             if resp['status'] != '200':
                 raise Exception("Invalid response %s." % resp['status'])
 
-            request_token = dict(urlparse.parse_qsl(content))
+            request_token = dict(parse_qsl(content))
 
             if ('oauth_callback_confirmed' not in request_token or
                 request_token['oauth_callback_confirmed'] != 'true'):
@@ -54,7 +54,7 @@ class TwitterOauthClientApp(object):
                            [('Location', redirect_url)])
             return []
         elif path == '/callback':
-            qsdict = dict(urlparse.parse_qsl(qs))
+            qsdict = dict(parse_qsl(qs))
 
             if qsdict['oauth_token'] not in self.request_tokens:
                 raise Exception('invalid token: %s' % self.request_tokens)
@@ -69,7 +69,7 @@ class TwitterOauthClientApp(object):
             resp, content = client.request(self.access_token_url, "POST")
             if resp['status'] != '200':
                 raise Exception("Invalid response %s." % resp['status'])
-            access_token = dict(urlparse.parse_qsl(content))
+            access_token = dict(parse_qsl(content))
             environ['oauth.access_token'] = access_token
             return self.onsuccess(environ, start_response)
 
