@@ -8,21 +8,37 @@ from twitblob.api import TwitBlobApi
 from twitblob.mongo_storage import MongoStorage
 from twitblob.twitter_client import TwitterOauthClientApp
 
-def make_wsgi_app():
+def make_wsgi_app(conn, config):
+    db = conn[config['db']]
+
+    consumer = oauth.Consumer(config['consumer_key'],
+                              config['consumer_secret'])
+
+    twitter = TwitterOauthClientApp(
+        consumer=consumer,
+        oauth=oauth,
+        request_tokens=MongoStorage(db.twitter_oauth_request_tokens)
+        )
+
+    api = TwitBlobApi(twitter=twitter, db=db)
+
+    return api.wsgi_app
+
+CONFIG_FILE = "config.json"
+
+CONFIG_DOCS = {
+    'db': 'name of the MongoDB database to use for storage',
+    'consumer_key': 'OAuth consumer key for Twitter',
+    'consumer_secret': 'OAuth consumer secret for Twitter'
+    }
+
+if __name__ in ['__main__', '__builtin__']:
     try:
         conn = pymongo.Connection()
     except Exception, e:
         print('Running this app requires a MongoDB server '
               'to be active on localhost at the default port.')
         sys.exit(1)
-
-    CONFIG_FILE = "config.json"
-
-    CONFIG_DOCS = {
-        'db': 'name of the MongoDB database to use for storage',
-        'consumer_key': 'OAuth consumer key for Twitter',
-        'consumer_secret': 'OAuth consumer secret for Twitter'
-        }
 
     if not os.path.exists(CONFIG_FILE):
         print("%s not found. Please create a JSON-formatted file with "
@@ -45,28 +61,12 @@ def make_wsgi_app():
         print
         sys.exit(1)
 
-    db = conn[config['db']]
+    app = make_wsgi_app(conn, config)
 
-    consumer = oauth.Consumer(config['consumer_key'],
-                              config['consumer_secret'])
+    if __name__ == '__main__':
+        from wsgiref.simple_server import make_server
 
-    twitter = TwitterOauthClientApp(
-        consumer=consumer,
-        oauth=oauth,
-        request_tokens=MongoStorage(db.twitter_oauth_request_tokens)
-        )
-
-    api = TwitBlobApi(twitter=twitter, db=db)
-
-    return api.wsgi_app
-
-if __name__ in ['__main__', '__builtin__']:
-    app = make_wsgi_app()
-
-if __name__ == '__main__':
-    from wsgiref.simple_server import make_server
-    
-    port = 8000
-    httpd = make_server('', port, app)
-    print "serving on port %d" % port
-    httpd.serve_forever()
+        port = 8000
+        httpd = make_server('', port, app)
+        print "serving on port %d" % port
+        httpd.serve_forever()
