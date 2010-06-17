@@ -1,4 +1,5 @@
 import json
+import datetime
 
 import pymongo
 from webtest import TestApp
@@ -24,13 +25,28 @@ def apptest(func):
             db[coll].remove()
 
         g['twitter'] = FakeTwitter()
-        g['api'] = MozSummitApi(twitter=twitter, db=db)
+        g['api'] = MozSummitApi(twitter=twitter, db=db,
+                                utcnow=TimeMachine.utcnow)
         g['app'] = TestApp(api.wsgi_app)
 
         func()
 
     wrapper.__name__ = func.__name__
     return wrapper
+
+class TimeMachine(object):
+    now = datetime.datetime(2010, 6, 17, 0, 32, 33, 985904)
+
+    @classmethod
+    def travel(klass, timedelta=None, *args, **kwargs):
+        if timedelta is None:
+            timedelta = datetime.timedelta(*args, **kwargs)
+
+        klass.now += timedelta
+
+    @classmethod
+    def utcnow(klass):
+        return klass.now
 
 class FakeTwitter(object):
     def __call__(self, environ, start_response):
@@ -133,3 +149,12 @@ def test_post_json_blob():
                'data': blob})
     resp = app.get('/blobs/bob')
     assert resp.json == blob
+
+@apptest
+def test_expired_token():
+    token = do_login('bob')
+    TimeMachine.travel(api.token_lifetime)
+    post_json('/blobs/bob',
+              {'token': token,
+               'data': {}},
+              status=403)

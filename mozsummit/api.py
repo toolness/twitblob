@@ -1,10 +1,14 @@
 import json
 import wsgiref.util
+import datetime
 
 from pymongo.objectid import ObjectId
 from pymongo.errors import InvalidId
 
 DEFAULT_MAX_BODY_SIZE = 20000
+
+# By default, auth tokens last a fortnight.
+DEFAULT_TOKEN_LIFETIME = datetime.timedelta(days=14)
 
 def allow_cross_origin(func):
     header = ('Access-Control-Allow-Origin', '*')
@@ -15,17 +19,22 @@ def allow_cross_origin(func):
     return wsgi_wrapper
 
 class MozSummitApi(object):
-    def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE):
+    def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE,
+                 token_lifetime=DEFAULT_TOKEN_LIFETIME,
+                 utcnow=datetime.datetime.utcnow):
         twitter.onsuccess = self.__twitter_onsuccess
         self.twitter = twitter
         self.db = db
         self.db.blobs.ensure_index('screen_name')
+        self.utcnow = utcnow
+        self.token_lifetime = token_lifetime
         self.max_body_size = max_body_size
 
     def __twitter_onsuccess(self, environ, start_response):
         token = {
             'screen_name': environ['oauth.access_token']['screen_name'],
-            'user_id': environ['oauth.access_token']['user_id']
+            'user_id': environ['oauth.access_token']['user_id'],
+            'date': self.utcnow()
             }
         hexid = str(self.db.auth_tokens.insert(token))
         start_response('200 OK',
@@ -68,7 +77,11 @@ class MozSummitApi(object):
                     objid = ObjectId(obj['token'])
                 except InvalidId:
                     return (obj, None)
-                return (obj, self.db.auth_tokens.find_one(objid))
+                token = self.db.auth_tokens.find_one(objid)
+                if self.utcnow() - token['date'] > self.token_lifetime:
+                    token = None
+                    self.db.auth_tokens.remove(objid)
+                return (obj, token)
             else:
                 return (obj, None)
 
