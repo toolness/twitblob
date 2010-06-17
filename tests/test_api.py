@@ -12,7 +12,11 @@ app = None
 twitter = None
 db = None
 
-conn = pymongo.Connection()
+try:
+    conn = pymongo.Connection()
+except Exception, e:
+    raise Exception('Running this test suite requires a MongoDB server '
+                    'to be active on localhost at the default port.')
 
 def apptest(func):
     def wrapper():
