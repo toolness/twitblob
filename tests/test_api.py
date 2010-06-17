@@ -105,6 +105,27 @@ def test_post_json_blob_with_no_token():
               status=403)
 
 @apptest
+def test_post_malformed_json_blob():
+    resp = app.post(
+        '/blobs/bob', 'bleh',
+        {'Content-Type': 'application/json'},
+        status=400
+        )
+
+@apptest
+def test_post_json_blob_with_no_data():
+    post_json('/blobs/bob',
+              {'token': do_login('bob')},
+              status=400)
+
+@apptest
+def test_post_json_blob_with_invalid_data():
+    post_json('/blobs/bob',
+              {'token': do_login('bob'),
+               'data': 'i am not an object'},
+              status=400)
+
+@apptest
 def test_post_json_blob():
     blob = {'talks': {'0': 0, '1': 5}}
     post_json('/blobs/bob',

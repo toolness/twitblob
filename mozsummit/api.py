@@ -59,7 +59,10 @@ class MozSummitApi(object):
 
         def get_body():
             f = environ['wsgi.input']
-            obj = json.loads(f.read(length))
+            try:
+                obj = json.loads(f.read(length))
+            except ValueError:
+                return (None, None)
             if 'token' in obj:
                 try:
                     objid = ObjectId(obj['token'])
@@ -75,6 +78,17 @@ class MozSummitApi(object):
             user = path.split('/')[2]
             if method == 'POST':
                 obj, token = get_body()
+                if obj is None:
+                    return json_response(
+                        '400 Bad Request',
+                        {'error': 'error parsing JSON body'}
+                        )
+                if not (isinstance(obj, dict) and 
+                        isinstance(obj.get('data'), dict)):
+                    return json_response(
+                        '400 Bad Request',
+                        {'error': 'body must contain "data" object'}
+                        )
                 if token and token['screen_name'] == user:
                     self.db.blobs.update({'screen_name': user},
                                          {'screen_name': user, 'data': obj['data']},
