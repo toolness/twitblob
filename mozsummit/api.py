@@ -89,6 +89,8 @@ class MozSummitApi(object):
                 except InvalidId:
                     return (obj, None)
                 token = self.db.auth_tokens.find_one(objid)
+                if token is None:
+                    return (obj, None)
                 if self.utcnow() - token['date'] > self.token_lifetime:
                     token = None
                     self.db.auth_tokens.remove(objid)

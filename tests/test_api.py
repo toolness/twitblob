@@ -174,3 +174,10 @@ def test_expired_token():
               {'token': token,
                'data': {}},
               status=403)
+
+@apptest
+def test_forged_token():
+    post_json('/blobs/bob',
+              {'token': '4c197e4a68fb2f095a000000',
+               'data': {}},
+              status=403)
