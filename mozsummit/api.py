@@ -38,9 +38,16 @@ class MozSummitApi(object):
             }
         hexid = str(self.db.auth_tokens.insert(token))
         start_response('200 OK',
-                       [('Content-Type', 'text/plain'),
+                       [('Content-Type', 'text/html'),
                         ('X-access-token', hexid)])
-        return ['TODO: window.postMessage() new token.']
+        client_token = {
+            'token': hexid,
+            'screen_name': token['screen_name']
+            }
+        script = "window.opener.postMessage(JSON.stringify(%s), '*');" % (
+            json.dumps(client_token)
+            )
+        return ['<script>%s</script>' % script]
 
     @allow_cross_origin
     def wsgi_app(self, environ, start_response):
@@ -61,7 +68,11 @@ class MozSummitApi(object):
                            [('Content-Type', 'text/plain')])
             return ['unknown path: %s' % path]
 
-        length = int(environ.get('CONTENT_LENGTH', '0'))
+        try:
+            length = int(environ.get('CONTENT_LENGTH', '0'))
+        except ValueError:
+            length = 0
+
         if length > self.max_body_size:
             return json_response('413 Request Entity Too Large',
                                  {'error': 'too big'})

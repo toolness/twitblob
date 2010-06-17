@@ -78,12 +78,24 @@ def do_login(screen_name):
     return resp.headers['X-access-token']
 
 @apptest
+def test_login_returns_postmessage_code():
+    twitter.fake_screen_name = 'bob'
+    twitter.fake_user_id = '1'
+    resp = app.get('/login/fake-callback')
+    assert resp.headers['Content-Type'] == 'text/html'
+    resp.mustcontain('<script>window.opener.postMessage(JSON.stringify(')
+
+@apptest
 def test_login():
     assert isinstance(do_login('bob'), basestring)
 
 @apptest
 def test_get_nonexistent_json_blob():
     resp = app.get('/blobs/nonexistent', status=404)
+
+@apptest
+def test_non_integer_content_length():
+    resp = app.get('/blah', '', {'Content-Length': ''}, status=404)
 
 @apptest
 def test_trivial_404():
