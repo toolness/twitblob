@@ -3,9 +3,9 @@ import datetime
 
 import pymongo
 from webtest import TestApp
-from mozsummit.api import MozSummitApi
+from twitblob.api import TwitBlobApi
 
-DBNAME = 'mozsummit_test_database'
+DBNAME = 'twitblob_test_database'
 
 api = None
 app = None
@@ -29,7 +29,7 @@ def apptest(func):
             db[coll].remove()
 
         g['twitter'] = FakeTwitter()
-        g['api'] = MozSummitApi(twitter=twitter, db=db,
+        g['api'] = TwitBlobApi(twitter=twitter, db=db,
                                 utcnow=TimeMachine.utcnow)
         g['app'] = TestApp(api.wsgi_app)
 

@@ -18,7 +18,7 @@ def allow_cross_origin(func):
         return func(self, environ, new_start_response)
     return wsgi_wrapper
 
-class MozSummitApi(object):
+class TwitBlobApi(object):
     def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE,
                  token_lifetime=DEFAULT_TOKEN_LIFETIME,
                  utcnow=datetime.datetime.utcnow):

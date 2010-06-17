@@ -7,7 +7,7 @@ class MongoStorage(object):
 
       >>> import pymongo
       >>> conn = pymongo.Connection()
-      >>> coll = conn.mozsummit_test_database.storage_test
+      >>> coll = conn.twitblob_test_database.storage_test
       >>> coll.remove()
 
       >>> s = MongoStorage(coll)

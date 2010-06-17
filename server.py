@@ -4,9 +4,9 @@ import json
 
 import oauth2 as oauth
 import pymongo
-from mozsummit.api import MozSummitApi
-from mozsummit.mongo_storage import MongoStorage
-from mozsummit.twitter_client import TwitterOauthClientApp
+from twitblob.api import TwitBlobApi
+from twitblob.mongo_storage import MongoStorage
+from twitblob.twitter_client import TwitterOauthClientApp
 
 try:
     conn = pymongo.Connection()
@@ -55,7 +55,7 @@ twitter = TwitterOauthClientApp(
     request_tokens=MongoStorage(db.twitter_oauth_request_tokens)
     )
 
-api = MozSummitApi(twitter=twitter, db=db)
+api = TwitBlobApi(twitter=twitter, db=db)
 
 app = api.wsgi_app
 

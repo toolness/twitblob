@@ -1,6 +1,6 @@
 import minimock
 
-from mozsummit.twitter_client import TwitterOauthClientApp
+from twitblob.twitter_client import TwitterOauthClientApp
 
 class Mock(minimock.Mock):
     def __repr__(self):
