@@ -1,6 +1,6 @@
 import os
 import sys
-import json
+import simplejson as json
 
 import oauth2 as oauth
 import pymongo

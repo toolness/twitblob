@@ -1,4 +1,4 @@
-import json
+import simplejson as json
 import urlparse
 import urllib
 from wsgiref.util import application_uri
