@@ -1,38 +1,20 @@
-import os
-import sys
-import simplejson as json
-
-import oauth2 as oauth
-import pymongo
-from twitblob.api import TwitBlobApi
-from twitblob.mongo_storage import MongoStorage
-from twitblob.twitter_client import TwitterOauthClientApp
-
-def make_wsgi_app(conn, config):
-    db = conn[config['db']]
-
-    consumer = oauth.Consumer(config['consumer_key'],
-                              config['consumer_secret'])
-
-    twitter = TwitterOauthClientApp(
-        consumer=consumer,
-        oauth=oauth,
-        request_tokens=MongoStorage(db.twitter_oauth_request_tokens)
-        )
-
-    api = TwitBlobApi(twitter=twitter, db=db)
-
-    return api.wsgi_app
+from twitblob.easy import make_wsgi_app
 
 CONFIG_FILE = "config.json"
 
 CONFIG_DOCS = {
-    'db': 'name of the MongoDB database to use for storage',
+    'db_name': 'name of the MongoDB database to use for storage',
     'consumer_key': 'OAuth consumer key for Twitter',
     'consumer_secret': 'OAuth consumer secret for Twitter'
     }
 
 if __name__ in ['__main__', '__builtin__']:
+    import os
+    import sys
+
+    import simplejson as json
+    import pymongo
+
     try:
         conn = pymongo.Connection()
     except Exception, e:
@@ -61,7 +43,7 @@ if __name__ in ['__main__', '__builtin__']:
         print
         sys.exit(1)
 
-    app = make_wsgi_app(conn, config)
+    app = make_wsgi_app(conn, **config)
 
     if __name__ == '__main__':
         from wsgiref.simple_server import make_server
