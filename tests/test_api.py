@@ -82,8 +82,15 @@ def post_json(url, obj, **kwargs):
                     **kwargs)
 
 def do_login(screen_name):
+    USER_IDS = {
+        'bob': '1',
+        'jane': '2'
+        }
+
+    assert screen_name in USER_IDS
+
     twitter.fake_screen_name = screen_name
-    twitter.fake_user_id = '1'
+    twitter.fake_user_id = USER_IDS[screen_name]
     resp = app.get('/login/fake-callback')
     return resp.headers['X-access-token']
 
@@ -124,13 +131,26 @@ def test_blobs_400():
     resp = app.get('/blobs/', status=400)
 
 @apptest
-def test_blobs_query_with_bad_ids():
+def test_blobs_query_with_no_ids():
     resp = app.get('/blobs/?ids=foo', status=400)
 
 @apptest
+def test_blobs_query_with_nonexistent_ids():
+    resp = app.get('/blobs/?ids=935234', status=200)
+    assert resp.json == {}
+
+@apptest
 def test_blobs_query_with_good_ids():
-    # TODO: Need to implement this and return something other than 501.
-    resp = app.get('/blobs/?ids=1,2,3', status=501)
+    post_json('/blobs/bob',
+              {'token': do_login('bob'),
+               'data': {'hai': 1}})
+    post_json('/blobs/jane',
+              {'token': do_login('jane'),
+               'data': {'there': 2}})
+    # We'll include one nonexistent ID to make sure that works.
+    resp = app.get('/blobs/?ids=1,2,439', status=200)
+    assert resp.json == {'bob': {'hai': 1},
+                         'jane': {'there': 2}}
 
 @apptest
 def test_cross_origin_support():

@@ -32,6 +32,7 @@ class TwitBlobApi(object):
         self.twitter = twitter
         self.db = db
         self.db.blobs.ensure_index('screen_name')
+        self.db.blobs.ensure_index('user_id')
         self.db.auth_tokens.ensure_index('id')
         self.utcnow = utcnow
         self.gentoken = gentoken
@@ -45,7 +46,7 @@ class TwitBlobApi(object):
         token = {
             'id': token_id,
             'screen_name': environ['oauth.access_token']['screen_name'],
-            'user_id': environ['oauth.access_token']['user_id'],
+            'user_id': int(environ['oauth.access_token']['user_id']),
             'date': self.utcnow()
             }
         self.db.auth_tokens.insert(token)
@@ -54,7 +55,8 @@ class TwitBlobApi(object):
                         ('X-access-token', token['id'])])
         client_token = {
             'token': token['id'],
-            'screen_name': token['screen_name']
+            'screen_name': token['screen_name'],
+            'user_id': token['user_id']
             }
         script = "window.opener.postMessage(JSON.stringify(%s), '*');" % (
             json.dumps(client_token)
@@ -113,8 +115,15 @@ class TwitBlobApi(object):
                     try:
                         ids = [int(strid)
                                for strid in qargs['ids'].split(",")]
-                        return json_response('501 Not Implemented',
-                                             {'error': 'TODO: impl this'})
+                        blobs = {}
+                        # TODO: This may be really slow because of the
+                        # many requests we're making to the DB. Shouldn't
+                        # be hard to optimize, though.
+                        for intid in ids:
+                            blob = self.db.blobs.find_one({'user_id': intid})
+                            if blob is not None:
+                                blobs[blob['screen_name']] = blob['data']
+                        return json_response('200 OK', blobs)
                     except ValueError:
                         return json_response('400 Bad Request',
                                              {'error': 'invalid ids'})
@@ -135,8 +144,10 @@ class TwitBlobApi(object):
                         {'error': 'body must contain "data" object'}
                         )
                 if token and token['screen_name'] == user:
-                    self.db.blobs.update({'screen_name': user},
-                                         {'screen_name': user, 'data': obj['data']},
+                    self.db.blobs.update({'user_id': token['user_id']},
+                                         {'screen_name': user,
+                                          'user_id': token['user_id'],
+                                          'data': obj['data']},
                                          upsert=True)
                     return json_response('200 OK', {'success': True})
                 else:
