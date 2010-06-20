@@ -1,6 +1,7 @@
 import simplejson as json
 import wsgiref.util
 import datetime
+from cgi import parse_qsl
 from base64 import urlsafe_b64encode
 from os import urandom
 
@@ -107,7 +108,18 @@ class TwitBlobApi(object):
 
         if path.startswith('/blobs/'):
             if path == '/blobs/':
-                return err_404()
+                qargs = dict(parse_qsl(environ.get('QUERY_STRING', '')))
+                if 'ids' in qargs:
+                    try:
+                        ids = [int(strid)
+                               for strid in qargs['ids'].split(",")]
+                        return json_response('501 Not Implemented',
+                                             {'error': 'TODO: impl this'})
+                    except ValueError:
+                        return json_response('400 Bad Request',
+                                             {'error': 'invalid ids'})
+                return json_response('400 Bad Request',
+                                     {'error': 'need query args'})
             user = path.split('/')[2]
             if method == 'POST':
                 obj, token = get_body()

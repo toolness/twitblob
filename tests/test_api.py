@@ -120,12 +120,21 @@ def test_trivial_404():
     resp = app.get('/blah', status=404)
 
 @apptest
-def test_blobs_404():
-    resp = app.get('/blobs/', status=404)
+def test_blobs_400():
+    resp = app.get('/blobs/', status=400)
+
+@apptest
+def test_blobs_query_with_bad_ids():
+    resp = app.get('/blobs/?ids=foo', status=400)
+
+@apptest
+def test_blobs_query_with_good_ids():
+    # TODO: Need to implement this and return something other than 501.
+    resp = app.get('/blobs/?ids=1,2,3', status=501)
 
 @apptest
 def test_cross_origin_support():
-    resp = app.get('/blobs/', status=404)
+    resp = app.get('/blobs/', status=400)
     assert resp.headers['Access-Control-Allow-Origin'] == '*'
 
 @apptest
