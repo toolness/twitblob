@@ -113,11 +113,6 @@ class Request(object):
             return self.json_response('200 OK', blob['data'])
 
     def process(self):
-        if self.path.startswith('/login/'):
-            wsgiref.util.shift_path_info(self.environ)
-            return self.api.twitter(self.environ,
-                                    self.start_response)
-
         if self.length > self.api.max_body_size:
             return self.json_response('413 Request Entity Too Large',
                                       {'error': 'too big'})
@@ -171,5 +166,9 @@ class TwitBlobApi(object):
 
     @allow_cross_origin
     def wsgi_app(self, environ, start_response):
+        if environ['PATH_INFO'].startswith('/login/'):
+            wsgiref.util.shift_path_info(environ)
+            return self.twitter(environ, start_response)
+
         request = Request(self, environ, start_response)
         return request.process()
