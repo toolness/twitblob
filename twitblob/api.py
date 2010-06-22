@@ -23,7 +23,7 @@ def gentoken():
     # an annoying '=' in the string.
     return urlsafe_b64encode(urandom(256/8+1))
 
-class Request(object):
+class BlobRequest(object):
     def __init__(self, api, environ, start_response):
         self.api = api
         self.environ = environ
@@ -171,5 +171,5 @@ class TwitBlobApi(object):
             wsgiref.util.shift_path_info(environ)
             return self.twitter(environ, start_response)
 
-        request = Request(self, environ, start_response)
+        request = BlobRequest(self, environ, start_response)
         return request.process()
