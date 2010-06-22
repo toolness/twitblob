@@ -80,11 +80,7 @@ class BlobRequest(object):
                     {'error': 'body must contain "data" object'}
                     )
             if token and token['screen_name'] == user:
-                self.api.db.blobs.update({'user_id': token['user_id']},
-                                         {'screen_name': user,
-                                          'user_id': token['user_id'],
-                                          'data': obj['data']},
-                                         upsert=True)
+                self.api.update_user(token=token, data=obj['data'])
                 return self.json_response('200 OK', {'success': True})
             else:
                 return self.json_response(
@@ -168,6 +164,13 @@ class TwitBlobApi(object):
             if blob is not None:
                 blobs[blob['screen_name']] = blob['data']
         return blobs
+
+    def update_user(self, token, data):
+        self.db.blobs.update({'user_id': token['user_id']},
+                             {'screen_name': token['screen_name'],
+                              'user_id': token['user_id'],
+                              'data': data},
+                             upsert=True)
 
     @allow_cross_origin
     def wsgi_app(self, environ, start_response):
