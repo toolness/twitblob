@@ -58,18 +58,11 @@ class BlobRequest(object):
                 try:
                     ids = [int(strid)
                            for strid in self.qargs['ids'].split(",")]
-                    blobs = {}
-                    # TODO: This may be really slow because of the
-                    # many requests we're making to the DB. Shouldn't
-                    # be hard to optimize, though.
-                    for intid in ids:
-                        blob = self.api.db.blobs.find_one({'user_id': intid})
-                        if blob is not None:
-                            blobs[blob['screen_name']] = blob['data']
-                    return self.json_response('200 OK', blobs)
                 except ValueError:
                     return self.json_response('400 Bad Request',
                                               {'error': 'invalid ids'})
+                return self.json_response('200 OK',
+                                          self.api.get_blobs_for_ids(ids))
             return self.json_response('400 Bad Request',
                                       {'error': 'need query args'})
         user = self.path.split('/')[2]
@@ -164,6 +157,17 @@ class TwitBlobApi(object):
             token = None
             self.db.auth_tokens.remove({'id': tokid})
         return token
+
+    def get_blobs_for_ids(self, ids):
+        blobs = {}
+        # TODO: This may be really slow because of the
+        # many requests we're making to the DB. Shouldn't
+        # be hard to optimize, though.
+        for intid in ids:
+            blob = self.db.blobs.find_one({'user_id': intid})
+            if blob is not None:
+                blobs[blob['screen_name']] = blob['data']
+        return blobs
 
     @allow_cross_origin
     def wsgi_app(self, environ, start_response):
