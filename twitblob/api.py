@@ -88,11 +88,11 @@ class BlobRequest(object):
                     {'error': 'Missing or invalid auth token'}
                     )
         elif self.method == 'GET':
-            blob = self.api.db.blobs.find_one({'screen_name': user})
+            blob = self.api.get_blob(user)
             if blob is None:
                 return self.json_response('404 Not Found',
                                           {'error': 'blob does not exist'})
-            return self.json_response('200 OK', blob['data'])
+            return self.json_response('200 OK', blob)
 
     def process(self):
         if self.length > self.api.max_body_size:
@@ -171,6 +171,12 @@ class TwitBlobApi(object):
                               'user_id': token['user_id'],
                               'data': data},
                              upsert=True)
+
+    def get_blob(self, screen_name):
+        blob = self.db.blobs.find_one({'screen_name': screen_name})
+        if blob is not None:
+            return blob['data']
+        return None
 
     @allow_cross_origin
     def wsgi_app(self, environ, start_response):
