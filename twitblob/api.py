@@ -49,15 +49,8 @@ class Request(object):
         except ValueError:
             return (None, None)
         if 'token' in obj:
-            token = self.api.db.auth_tokens.find_one({'id': obj['token']})
-            if token is None:
-                return (obj, None)
-            if self.api.utcnow() - token['date'] > self.api.token_lifetime:
-                token = None
-                self.api.db.auth_tokens.remove({'id': obj['token']})
-            return (obj, token)
-        else:
-            return (obj, None)
+            return (obj, self.api.get_token(obj['token']))
+        return (obj, None)
 
     def serve_blob(self):
         if self.path == '/blobs/':
@@ -163,6 +156,14 @@ class TwitBlobApi(object):
             json.dumps(client_token)
             )
         return ['<script>%s</script>' % script]
+
+    def get_token(self, tokid):
+        token = self.db.auth_tokens.find_one({'id': tokid})
+        if (token is not None and
+            self.utcnow() - token['date'] > self.token_lifetime):
+            token = None
+            self.db.auth_tokens.remove({'id': tokid})
+        return token
 
     @allow_cross_origin
     def wsgi_app(self, environ, start_response):
