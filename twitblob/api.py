@@ -101,6 +101,8 @@ class BlobRequest(object):
 
         if self.path.startswith('/blobs/'):
             return self.serve_blob()
+        if self.path == '/who/':
+            return self.json_response('200 OK', self.api.get_user_list())
 
         self.start_response('404 Not Found',
                             [('Content-Type', 'text/plain')])
@@ -153,6 +155,10 @@ class TwitBlobApi(object):
             token = None
             self.db.auth_tokens.remove({'id': tokid})
         return token
+
+    def get_user_list(self):
+        return [(blob['screen_name'], blob['user_id'])
+                for blob in self.db.blobs.find()]
 
     def get_blobs_for_ids(self, ids):
         blobs = {}

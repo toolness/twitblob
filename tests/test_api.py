@@ -135,6 +135,14 @@ def test_blobs_query_with_no_ids():
     resp = app.get('/blobs/?ids=foo', status=400)
 
 @apptest
+def test_get_user_list():
+    post_json('/blobs/bob',
+              {'token': do_login('bob'),
+               'data': {'hai': 1}})
+    resp = app.get('/who/')
+    assert resp.json == [['bob', 1]]
+
+@apptest
 def test_blobs_query_with_nonexistent_ids():
     resp = app.get('/blobs/?ids=935234', status=200)
     assert resp.json == {}
