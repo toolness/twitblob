@@ -81,6 +81,11 @@ def post_json(url, obj, **kwargs):
                     {'Content-Type': 'application/json'},
                     **kwargs)
 
+def put_json(url, obj, **kwargs):
+    resp = app.put(url, json.dumps(obj),
+                   {'Content-Type': 'application/json'},
+                   **kwargs)
+
 def do_login(screen_name):
     USER_IDS = {
         'bob': '1',
@@ -221,6 +226,36 @@ def test_post_json_blob():
                'data': blob})
     resp = app.get('/blobs/bob')
     assert resp.json == blob
+
+@apptest
+def test_post_json_blob_twice_updates():
+    token = do_login('bob')
+    post_json('/blobs/bob',
+              {'token': token,
+               'data': {'foo': 'bar'}})
+    resp = app.get('/blobs/bob')
+    assert resp.json == {'foo': 'bar'}
+
+    post_json('/blobs/bob',
+              {'token': token,
+               'data': {'baz': 'um'}})
+    resp = app.get('/blobs/bob')
+    assert resp.json == {'foo': 'bar', 'baz': 'um'}
+
+@apptest
+def test_post_json_blob_then_put():
+    token = do_login('bob')
+    post_json('/blobs/bob',
+              {'token': token,
+               'data': {'foo': 'bar'}})
+    resp = app.get('/blobs/bob')
+    assert resp.json == {'foo': 'bar'}
+
+    put_json('/blobs/bob',
+             {'token': token,
+              'data': {'meh': 1}})
+    resp = app.get('/blobs/bob')
+    assert resp.json == {'meh': 1}
 
 @apptest
 def test_expired_token():

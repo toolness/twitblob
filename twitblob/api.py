@@ -66,7 +66,7 @@ class BlobRequest(object):
             return self.json_response('400 Bad Request',
                                       {'error': 'need query args'})
         user = self.path.split('/')[2]
-        if self.method == 'POST':
+        if self.method in ['POST', 'PUT']:
             obj, token = self.get_body()
             if obj is None:
                 return self.json_response(
@@ -80,7 +80,10 @@ class BlobRequest(object):
                     {'error': 'body must contain "data" object'}
                     )
             if token and token['screen_name'] == user:
-                self.api.update_user(token=token, data=obj['data'])
+                if self.method == 'POST':
+                    self.api.update_user(token=token, data=obj['data'])
+                else:
+                    self.api.replace_user(token=token, data=obj['data'])
                 return self.json_response('200 OK', {'success': True})
             else:
                 return self.json_response(
@@ -173,6 +176,14 @@ class TwitBlobApi(object):
         return blobs
 
     def update_user(self, token, data):
+        blob = self.db.blobs.find_one({'screen_name': token['screen_name']})
+        if blob is not None:
+            for name in data:
+                blob['data'][name] = data[name]
+            data = blob['data']
+        self.replace_user(token, data)
+
+    def replace_user(self, token, data):
         self.db.blobs.update({'user_id': token['user_id']},
                              {'screen_name': token['screen_name'],
                               'user_id': token['user_id'],
