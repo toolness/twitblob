@@ -140,7 +140,8 @@ def test_get_user_list():
               {'token': do_login('bob'),
                'data': {'hai': 1}})
     resp = app.get('/who/')
-    assert resp.json == [['bob', 1]]
+    assert resp.json == [{'screen_name': 'bob',
+                          'user_id': 1}]
 
 @apptest
 def test_blobs_query_with_nonexistent_ids():

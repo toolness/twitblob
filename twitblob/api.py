@@ -157,7 +157,8 @@ class TwitBlobApi(object):
         return token
 
     def get_user_list(self):
-        return [(blob['screen_name'], blob['user_id'])
+        return [{'screen_name': blob['screen_name'],
+                 'user_id': blob['user_id']}
                 for blob in self.db.blobs.find()]
 
     def get_blobs_for_ids(self, ids):
