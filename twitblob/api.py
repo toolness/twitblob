@@ -97,6 +97,38 @@ class BlobRequest(object):
                                           {'error': 'blob does not exist'})
             return self.json_response('200 OK', blob)
 
+    def post_feedback(self):
+        if self.method != 'POST':
+            return self.json_response(
+                '405 Method Not Allowed',
+                {'error': 'unsupported method: %s' % self.method}
+                )
+        obj, token = self.get_body()
+        if obj is None:
+            return self.json_response(
+                '400 Bad Request',
+                {'error': 'error parsing JSON body'}
+                )
+        if not (isinstance(obj, dict) and 
+                isinstance(obj.get('message'), basestring)):
+            return self.json_response(
+                '400 Bad Request',
+                {'error': 'body must contain "message" string'}
+                )
+        if not token:
+            return self.json_response(
+                '403 Forbidden',
+                {'error': 'Missing or invalid auth token'}
+                )
+        if not self.api.send_feedback:
+            return self.json_response(
+                '501 Not Implemented',
+                {'error': 'feedback mechanism not implemented'}
+                )
+        result = self.api.send_feedback(sender=token['screen_name'],
+                                        message=obj['message'])
+        return self.json_response('200 OK', result)
+
     def process(self):
         if self.length > self.api.max_body_size:
             return self.json_response('413 Request Entity Too Large',
@@ -106,6 +138,8 @@ class BlobRequest(object):
             return self.serve_blob()
         if self.path == '/who/':
             return self.json_response('200 OK', self.api.get_user_list())
+        if self.path == '/feedback/':
+            return self.post_feedback()
 
         self.start_response('404 Not Found',
                             [('Content-Type', 'text/plain')])
@@ -115,7 +149,8 @@ class TwitBlobApi(object):
     def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE,
                  token_lifetime=DEFAULT_TOKEN_LIFETIME,
                  utcnow=datetime.datetime.utcnow,
-                 gentoken=gentoken):
+                 gentoken=gentoken,
+                 send_feedback=None):
         twitter.onsuccess = self.__twitter_onsuccess
         self.twitter = twitter
         self.db = db
@@ -126,6 +161,7 @@ class TwitBlobApi(object):
         self.gentoken = gentoken
         self.token_lifetime = token_lifetime
         self.max_body_size = max_body_size
+        self.send_feedback = send_feedback
 
     def __twitter_onsuccess(self, environ, start_response):
         token_id = self.gentoken()

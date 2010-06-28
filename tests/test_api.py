@@ -77,12 +77,12 @@ class FakeTwitter(object):
         raise AssertionError('unexpected path: %s' % environ['PATH_INFO'])
 
 def post_json(url, obj, **kwargs):
-    resp = app.post(url, json.dumps(obj),
+    return app.post(url, json.dumps(obj),
                     {'Content-Type': 'application/json'},
                     **kwargs)
 
 def put_json(url, obj, **kwargs):
-    resp = app.put(url, json.dumps(obj),
+    return app.put(url, json.dumps(obj),
                    {'Content-Type': 'application/json'},
                    **kwargs)
 
@@ -272,3 +272,26 @@ def test_forged_token():
               {'token': '4c197e4a68fb2f095a000000',
                'data': {}},
               status=403)
+
+@apptest
+def test_feedback_with_no_impl():
+    post_json('/feedback/',
+              {'token': do_login('bob'),
+               'message': 'o hai'},
+              status=501)
+
+@apptest
+def test_feedback_with_impl():
+    def fake_send_feedback(sender, message):
+        return {'sender': sender, 'message': message}
+
+    api.send_feedback = fake_send_feedback
+
+    resp = post_json('/feedback/',
+                     {'token': do_login('bob'),
+                      'message': 'o hai'})
+
+    assert resp.json == {'sender': 'bob',
+                         'message': 'o hai'}
+
+# TODO: Need tests for edge cases for feedback.
