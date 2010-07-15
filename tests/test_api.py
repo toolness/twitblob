@@ -12,6 +12,11 @@ app = None
 twitter = None
 db = None
 
+USER_IDS = {
+    'bob': '1',
+    'jane': '2'
+    }
+
 try:
     conn = pymongo.Connection()
 except Exception, e:
@@ -87,17 +92,19 @@ def put_json(url, obj, **kwargs):
                    **kwargs)
 
 def do_login(screen_name):
-    USER_IDS = {
-        'bob': '1',
-        'jane': '2'
-        }
-
     assert screen_name in USER_IDS
 
     twitter.fake_screen_name = screen_name
     twitter.fake_user_id = USER_IDS[screen_name]
     resp = app.get('/login/fake-callback')
     return resp.headers['X-access-token']
+
+@apptest
+def test_login_contains_quota_info():
+    twitter.fake_screen_name = 'bob'
+    twitter.fake_user_id = USER_IDS['bob']
+    resp = app.get('/login/fake-callback')
+    assert '"quota": 20000' in resp
 
 @apptest
 def test_tokens_are_unique():
