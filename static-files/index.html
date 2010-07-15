@@ -1,14 +1,29 @@
+<!DOCTYPE html>
 <html>
 <head>
   <title>Twitblob Documentation</title>
   <style>
   body {
-    font-family: Baskerville;
+    font-family: Baskerville, Georgia, serif;
+    font-size: 12pt;
   }
 
   #content {
     width: 40em;
     margin: 0 auto;
+  }
+
+  code, pre {
+    font-family: Monaco, Lucida Console, monospace;
+    font-size: 9pt;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  a:hover {
+   background: yellow;
   }
   </style>
 </head>
@@ -22,7 +37,67 @@
   minimum fuss.</p>
   <h3>Requirements</h3>
   <p>The browser using <em>Twitblob</em> must support cross-origin
-  <code>XMLHttpRequest</code> and the <code>postMessage</code> API.</p>
+  <code>XMLHttpRequest</code> and the <code>postMessage</code>
+    API. Support for a client-side storage API such as
+   <code>localStorage</code> is also recommended for persisting
+   authentication tokens.</p>
+  <h3>Example Code</h3>
+  <p>The following code provides functions to perform basic operations with
+   the <em>Twitblob</em> API.</p>
+  <p>This code is actually evaluated in the context of this Web page,
+   so you can use your browser's JavaScript Console to inspect or
+   change the values of variables and call functions.</p>
+  <p>First, we define a few global variables:</p>
+  <pre>
+  var server = '';    // Base URL of the Twitblob API server.
+  var twitblob;       // JSON object containing auth info.</pre>
+  <p>We'll now define a <code>login()</code> function that opens
+  a popup window which guides the end-user through Twitter
+  authentication, saving the credentials in the <code>twitblob</code>
+  global when finished.</p>
+  <pre>
+  function login() {
+    var popup = window.open(server + '/login/', 'login',
+                            'width=640,height=480');
+    window.addEventListener('message', function msg(event) {
+      if (event.source == popup) {
+        popup.close();
+        window.removeEventListener('message', msg, false);
+        twitblob = JSON.parse(event.data);
+        console.log("logged in", twitblob);
+      }
+    }, false);
+  }</pre>
+  <p>Finally, we'll define two functions that allow us to update and
+  retrieve the currently logged-in user's JSON blob.</p>
+  <pre>
+  function updateBlob(obj) {
+    var req = new XMLHttpRequest();
+    req.open('POST', server + '/blobs/' + twitblob.screen_name);
+    req.send(JSON.stringify(obj));
+  }
+
+  function getBlob() {
+    var req = new XMLHttpRequest();
+    req.open('GET', server + '/blobs/' + twitblob.screen_name);
+    req.onload = function() {
+      console.log("got blob", JSON.parse(req.responseText));
+    }
+    req.send(null);
+  }</pre>
+  <h3>Limitations</h3>
+  <p><em>Twitblob</em> has not been tested for use with
+   status.net's Twitter-compatibile API.</p>
 </div>
+<script>
+onload = function() {
+  var elems = document.querySelectorAll("pre");
+  for (var i = 0; i < elems.length; i++) {
+    var script = document.createElement("script");
+    script.textContent = elems[i].textContent;
+    document.body.appendChild(script);
+  }
+}
+</script>
 </body>
 </html>
