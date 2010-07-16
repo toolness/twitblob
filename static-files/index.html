@@ -80,7 +80,7 @@
         popup.close();
         window.removeEventListener('message', msg, false);
         twitblob = JSON.parse(event.data);
-        console.log("logged in", twitblob);
+        console.log('logged in', twitblob);
       }
     }, false);
   }</pre>
@@ -94,7 +94,7 @@
     var req = new XMLHttpRequest();
     req.open('POST', server + '/blobs/' + twitblob.screen_name);
     req.onload = function() {
-      console.log("updated blob", JSON.parse(req.responseText));
+      console.log('updated blob', JSON.parse(req.responseText));
     }
     req.send(JSON.stringify({token: twitblob.token, data: obj}));
   }
@@ -103,7 +103,7 @@
     var req = new XMLHttpRequest();
     req.open('GET', server + '/blobs/' + twitblob.screen_name);
     req.onload = function() {
-      console.log("got blob", JSON.parse(req.responseText));
+      console.log('got blob', JSON.parse(req.responseText));
     }
     req.send(null);
   }</pre>
