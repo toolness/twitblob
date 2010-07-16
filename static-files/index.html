@@ -25,6 +25,12 @@
   a:hover {
    background: yellow;
   }
+
+  #twitter-login {
+    cursor: pointer;
+    display: block;
+    margin: 0 auto;
+  }
   </style>
 </head>
 <body>
@@ -47,10 +53,15 @@
   <p>This code is actually evaluated in the context of this Web page,
    so you can use your browser's JavaScript Console to inspect or
    change the values of variables and call functions.</p>
-  <p>First, we define a few global variables:</p>
+  <p>First, we define a global variable called <code>server</code>
+  which holds the base URL for the <em>Twitblob</em> API:</p>
   <pre>
-  var server = '';    // Base URL of the Twitblob API server.
-  var twitblob;       // JSON object containing auth info.</pre>
+  var server = 'https://secure.toolness.com/api/twitblob';</pre>
+  <p>We also define a global called <code>twitblob</code> which
+  will eventually contain the authentication information for the
+  <em>Twitblob</em> service:</p>
+  <pre>
+  var twitblob = null;</pre>
   <p>We'll now define a <code>login()</code> function that opens
   a popup window which guides the end-user through Twitter
   authentication, saving the credentials in the <code>twitblob</code>
@@ -68,13 +79,20 @@
       }
     }, false);
   }</pre>
+  <p>You can click on the image below to trigger this function.</p>
+  <img id="twitter-login" src="sign-in-with-twitter-d.png"
+       onclick="login()">
   <p>Finally, we'll define two functions that allow us to update and
   retrieve the currently logged-in user's JSON blob.</p>
   <pre>
   function updateBlob(obj) {
     var req = new XMLHttpRequest();
     req.open('POST', server + '/blobs/' + twitblob.screen_name);
-    req.send(JSON.stringify(obj));
+    req.onload = function() {
+      console.log("updated blob", JSON.parse(req.responseText));
+    }
+    req.send(JSON.stringify({token: twitblob.token,
+                             data: obj}));
   }
 
   function getBlob() {
