@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html debug="true">
 <head>
   <title>Twitblob Documentation</title>
   <style>
@@ -47,12 +47,14 @@
     API. Support for a client-side storage API such as
    <code>localStorage</code> is also recommended for persisting
    authentication tokens.</p>
-  <h3>Example Code</h3>
+  <h3>Getting Started</h3>
   <p>The following code provides functions to perform basic operations with
    the <em>Twitblob</em> API.</p>
   <p>This code is actually evaluated in the context of this Web page,
    so you can use your browser's JavaScript Console to inspect or
-   change the values of variables and call functions.</p>
+   change the values of variables and call functions. If your browser
+   doesn't have a JavaScript Console, use <a id="fblite"
+    href="#fblite">Firebug Lite</a>.</p>
   <p>First, we define a global variable called <code>server</code>
   which holds the base URL for the <em>Twitblob</em> API:</p>
   <pre>
@@ -103,6 +105,12 @@
     }
     req.send(null);
   }</pre>
+  <p>Play around with these functions in your JavaScript Console to
+    get a feel for how they work. Note that issuing a
+    <code>POST</code> request to the <em>Twitblob</em> API will
+    effectively overwrite only the key-value pairs mentioned in the
+    object sent; if you want to completely replace the user's whole
+    JSON blob, issue a <code>PUT</code> request instead.</p>
   <h3>Limitations</h3>
   <p><em>Twitblob</em> has not been tested for use with
    status.net's Twitter-compatibile API.</p>
@@ -115,6 +123,14 @@ onload = function() {
     script.textContent = elems[i].textContent;
     document.body.appendChild(script);
   }
+
+  var fblite = document.getElementById("fblite");
+  fblite.addEventListener("click", function(event) {
+    event.preventDefault();
+    var script = document.createElement("script");
+    script.src = "https://getfirebug.com/firebug-lite.js";
+    document.body.appendChild(script);
+  }, false);
 }
 </script>
 </body>
