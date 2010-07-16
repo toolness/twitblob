@@ -59,6 +59,9 @@
   which holds the base URL for the <em>Twitblob</em> API:</p>
   <pre>
   var server = 'https://secure.toolness.com/api/twitblob';</pre>
+  <p>The above URL is just the author's personal <em>Twitblob</em>
+    server. You can change it to a different one using your JavaScript
+    Console.</p>
   <p>We also define a global called <code>twitblob</code> which
   will eventually contain the authentication information for the
   <em>Twitblob</em> service:</p>
@@ -93,8 +96,7 @@
     req.onload = function() {
       console.log("updated blob", JSON.parse(req.responseText));
     }
-    req.send(JSON.stringify({token: twitblob.token,
-                             data: obj}));
+    req.send(JSON.stringify({token: twitblob.token, data: obj}));
   }
 
   function getBlob() {
