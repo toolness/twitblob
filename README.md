@@ -17,14 +17,19 @@ Running the Twitblob test suite requires `nose` and `webtest`.
 
 ### Installation ###
 
+Before proceeding, make sure you have a MongoDB server running on
+localhost at the default port. This is currently required to run the
+test suite and standalone development server.
+
 Installing Twitblob on your server can be done by executing the
 following at a shell prompt from the root of your checkout:
 
-    python run_tests.py
+    python setup.py nosetests
+    python setup.py build
     sudo python setup.py install
 
 To run the development server, run `server.py`. It will provide
 instructions on how to proceed.
 
 To embed the Twitblob WSGI application into your web server, please
-read the source code for `server.py`.
+read the source code for `server.py`. Sorry this isn't easier right now!
