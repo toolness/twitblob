@@ -36,10 +36,13 @@ class Request(object):
         except ValueError:
             self.length = 0
 
-    def json_response(self, status, obj):
+    def json_response(self, obj, status='200 OK'):
         self.start_response(status,
                             [('Content-Type', 'application/json')])
         return [json.dumps(obj)]
+
+    def json_error(self, error, status='400 Bad Request'):
+        return self.json_response({'error': error}, status)
 
 class BlobRequest(Request):
     def __init__(self, api, environ, start_response):
@@ -63,85 +66,62 @@ class BlobRequest(Request):
                     ids = [int(strid)
                            for strid in self.qargs['ids'].split(",")]
                 except ValueError:
-                    return self.json_response('400 Bad Request',
-                                              {'error': 'invalid ids'})
-                return self.json_response('200 OK',
-                                          self.api.get_blobs_for_ids(ids))
-            return self.json_response('400 Bad Request',
-                                      {'error': 'need query args'})
+                    return self.json_error('invalid ids')
+                return self.json_response(self.api.get_blobs_for_ids(ids))
+            return self.json_error('need query args')
         user = self.path.split('/')[2]
         if self.method in ['POST', 'PUT']:
             obj, token = self.get_body()
             if obj is None:
-                return self.json_response(
-                    '400 Bad Request',
-                    {'error': 'error parsing JSON body'}
-                    )
+                return self.json_error('error parsing JSON body')
             if not (isinstance(obj, dict) and 
                     isinstance(obj.get('data'), dict)):
-                return self.json_response(
-                    '400 Bad Request',
-                    {'error': 'body must contain "data" object'}
-                    )
+                return self.json_error('body must contain "data" object')
             if token and token['screen_name'] == user:
                 if self.method == 'POST':
                     self.api.update_user(token=token, data=obj['data'])
                 else:
                     self.api.replace_user(token=token, data=obj['data'])
-                return self.json_response('200 OK', {'success': True})
+                return self.json_response({'success': True})
             else:
-                return self.json_response(
-                    '403 Forbidden',
-                    {'error': 'Missing or invalid auth token'}
-                    )
+                return self.json_error('Missing or invalid auth token',
+                                       status='403 Forbidden')
         elif self.method == 'GET':
             blob = self.api.get_blob(user)
             if blob is None:
-                return self.json_response('404 Not Found',
-                                          {'error': 'blob does not exist'})
-            return self.json_response('200 OK', blob)
+                return self.json_error('blob does not exist',
+                                       status='404 Not Found')
+            return self.json_response(blob)
 
     def post_feedback(self):
         if self.method != 'POST':
-            return self.json_response(
-                '405 Method Not Allowed',
-                {'error': 'unsupported method: %s' % self.method}
-                )
+            return self.json_error('unsupported method: %s' % self.method,
+                                   status='405 Method Not Allowed')
         obj, token = self.get_body()
         if obj is None:
-            return self.json_response(
-                '400 Bad Request',
-                {'error': 'error parsing JSON body'}
-                )
+            return self.json_error('error parsing JSON body')
         if not (isinstance(obj, dict) and 
                 isinstance(obj.get('message'), basestring)):
-            return self.json_response(
-                '400 Bad Request',
-                {'error': 'body must contain "message" string'}
-                )
+            return self.json_error('body must contain "message" string')
         if not token:
-            return self.json_response(
-                '403 Forbidden',
-                {'error': 'Missing or invalid auth token'}
-                )
+            return self.json_error('Missing or invalid auth token',
+                                   status='403 Forbidden')
         if not self.api.send_feedback:
-            return self.json_response(
-                '501 Not Implemented',
-                {'error': 'feedback mechanism not implemented'}
-                )
+            return self.json_error('feedback mechanism not implemented',
+                                   status='501 Not Implemented')
         result = self.api.send_feedback(sender=token['screen_name'],
                                         message=obj['message'])
-        return self.json_response('200 OK', result)
+        return self.json_response(result)
 
     def process(self):
         if self.length > self.api.max_body_size:
-            return self.json_response('413 Request Entity Too Large',
-                                      {'error': 'too big'})
+            return self.json_error('too big',
+                                   status='413 Request Entity Too Large')
 
         if self.path.startswith('/blobs/'):
             return self.serve_blob()
         if self.path == '/who/':
-            return self.json_response('200 OK', self.api.get_user_list())
+            return self.json_response(self.api.get_user_list())
         if self.path == '/feedback/':
             return self.post_feedback()
 
