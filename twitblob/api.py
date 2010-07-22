@@ -36,15 +36,15 @@ class Request(object):
         except ValueError:
             self.length = 0
 
-class BlobRequest(Request):
-    def __init__(self, api, environ, start_response):
-        self.api = api
-        Request.__init__(self, environ, start_response)
-
     def json_response(self, status, obj):
         self.start_response(status,
                             [('Content-Type', 'application/json')])
         return [json.dumps(obj)]
+
+class BlobRequest(Request):
+    def __init__(self, api, environ, start_response):
+        self.api = api
+        Request.__init__(self, environ, start_response)
 
     def get_body(self):
         f = self.environ['wsgi.input']
