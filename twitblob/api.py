@@ -23,9 +23,8 @@ def gentoken():
     # an annoying '=' in the string.
     return urlsafe_b64encode(urandom(256/8+1))
 
-class BlobRequest(object):
-    def __init__(self, api, environ, start_response):
-        self.api = api
+class Request(object):
+    def __init__(self, environ, start_response):
         self.environ = environ
         self.start_response = start_response
         self.path = environ['PATH_INFO']
@@ -36,6 +35,11 @@ class BlobRequest(object):
             self.length = int(environ.get('CONTENT_LENGTH', '0'))
         except ValueError:
             self.length = 0
+
+class BlobRequest(Request):
+    def __init__(self, api, environ, start_response):
+        self.api = api
+        Request.__init__(self, environ, start_response)
 
     def json_response(self, status, obj):
         self.start_response(status,
