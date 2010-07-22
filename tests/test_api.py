@@ -267,7 +267,7 @@ def test_post_json_blob_then_put():
 @apptest
 def test_expired_token():
     token = do_login('bob')
-    TimeMachine.travel(api.token_lifetime)
+    TimeMachine.travel(api.db.token_lifetime)
     post_json('/blobs/bob',
               {'token': token,
                'data': {}},

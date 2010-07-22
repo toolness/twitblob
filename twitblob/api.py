@@ -44,99 +44,9 @@ class Request(object):
     def json_error(self, error, status='400 Bad Request'):
         return self.json_response({'error': error}, status)
 
-class BlobRequest(Request):
-    def __init__(self, api, environ, start_response):
-        self.api = api
-        Request.__init__(self, environ, start_response)
-
-    def get_body(self):
-        f = self.environ['wsgi.input']
-        try:
-            obj = json.loads(f.read(self.length))
-        except ValueError:
-            return (None, None)
-        if 'token' in obj:
-            return (obj, self.api.get_token(obj['token']))
-        return (obj, None)
-
-    def serve_blob(self):
-        if self.path == '/blobs/':
-            if 'ids' in self.qargs:
-                try:
-                    ids = [int(strid)
-                           for strid in self.qargs['ids'].split(",")]
-                except ValueError:
-                    return self.json_error('invalid ids')
-                return self.json_response(self.api.get_blobs_for_ids(ids))
-            return self.json_error('need query args')
-        user = self.path.split('/')[2]
-        if self.method in ['POST', 'PUT']:
-            obj, token = self.get_body()
-            if obj is None:
-                return self.json_error('error parsing JSON body')
-            if not (isinstance(obj, dict) and 
-                    isinstance(obj.get('data'), dict)):
-                return self.json_error('body must contain "data" object')
-            if token and token['screen_name'] == user:
-                if self.method == 'POST':
-                    self.api.update_user(token=token, data=obj['data'])
-                else:
-                    self.api.replace_user(token=token, data=obj['data'])
-                return self.json_response({'success': True})
-            else:
-                return self.json_error('Missing or invalid auth token',
-                                       status='403 Forbidden')
-        elif self.method == 'GET':
-            blob = self.api.get_blob(user)
-            if blob is None:
-                return self.json_error('blob does not exist',
-                                       status='404 Not Found')
-            return self.json_response(blob)
-
-    def post_feedback(self):
-        if self.method != 'POST':
-            return self.json_error('unsupported method: %s' % self.method,
-                                   status='405 Method Not Allowed')
-        obj, token = self.get_body()
-        if obj is None:
-            return self.json_error('error parsing JSON body')
-        if not (isinstance(obj, dict) and 
-                isinstance(obj.get('message'), basestring)):
-            return self.json_error('body must contain "message" string')
-        if not token:
-            return self.json_error('Missing or invalid auth token',
-                                   status='403 Forbidden')
-        if not self.api.send_feedback:
-            return self.json_error('feedback mechanism not implemented',
-                                   status='501 Not Implemented')
-        result = self.api.send_feedback(sender=token['screen_name'],
-                                        message=obj['message'])
-        return self.json_response(result)
-
-    def process(self):
-        if self.length > self.api.max_body_size:
-            return self.json_error('too big',
-                                   status='413 Request Entity Too Large')
-
-        if self.path.startswith('/blobs/'):
-            return self.serve_blob()
-        if self.path == '/who/':
-            return self.json_response(self.api.get_user_list())
-        if self.path == '/feedback/':
-            return self.post_feedback()
-
-        self.start_response('404 Not Found',
-                            [('Content-Type', 'text/plain')])
-        return ['unknown path: %s' % self.path]
-
-class TwitBlobApi(object):
-    def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE,
-                 token_lifetime=DEFAULT_TOKEN_LIFETIME,
-                 utcnow=datetime.datetime.utcnow,
-                 gentoken=gentoken,
-                 send_feedback=None):
-        twitter.onsuccess = self.__twitter_onsuccess
-        self.twitter = twitter
+class TwitBlobDb(object):
+    def __init__(self, db, token_lifetime=DEFAULT_TOKEN_LIFETIME,
+                 utcnow=datetime.datetime.utcnow, gentoken=gentoken):
         self.db = db
         self.db.blobs.ensure_index('screen_name')
         self.db.blobs.ensure_index('user_id')
@@ -144,33 +54,19 @@ class TwitBlobApi(object):
         self.utcnow = utcnow
         self.gentoken = gentoken
         self.token_lifetime = token_lifetime
-        self.max_body_size = max_body_size
-        self.send_feedback = send_feedback
 
-    def __twitter_onsuccess(self, environ, start_response):
+    def make_token(self, screen_name, user_id):
         token_id = self.gentoken()
         while self.db.auth_tokens.find_one({'id': token_id}):
             token_id = self.gentoken()
         token = {
             'id': token_id,
-            'screen_name': environ['oauth.access_token']['screen_name'],
-            'user_id': int(environ['oauth.access_token']['user_id']),
+            'screen_name': screen_name,
+            'user_id': user_id,
             'date': self.utcnow()
             }
         self.db.auth_tokens.insert(token)
-        start_response('200 OK',
-                       [('Content-Type', 'text/html'),
-                        ('X-access-token', token['id'])])
-        client_token = {
-            'token': token['id'],
-            'screen_name': token['screen_name'],
-            'user_id': token['user_id'],
-            'quota': self.max_body_size
-            }
-        script = "window.opener.postMessage(JSON.stringify(%s), '*');" % (
-            json.dumps(client_token)
-            )
-        return ['<script>%s</script>' % script]
+        return token
 
     def get_token(self, tokid):
         token = self.db.auth_tokens.find_one({'id': tokid})
@@ -217,11 +113,117 @@ class TwitBlobApi(object):
             return blob['data']
         return None
 
+class TwitBlobApi(object):
+    def __init__(self, twitter, db, max_body_size=DEFAULT_MAX_BODY_SIZE,
+                 send_feedback=None, **kwargs):
+        twitter.onsuccess = self.__twitter_onsuccess
+        self.twitter = twitter
+        self.db = TwitBlobDb(db, **kwargs)
+        self.max_body_size = max_body_size
+        self.send_feedback = send_feedback
+
+    def __twitter_onsuccess(self, environ, start_response):
+        token = self.db.make_token(
+            environ['oauth.access_token']['screen_name'],
+            int(environ['oauth.access_token']['user_id'])
+            )
+        start_response('200 OK',
+                       [('Content-Type', 'text/html'),
+                        ('X-access-token', token['id'])])
+        client_token = {
+            'token': token['id'],
+            'screen_name': token['screen_name'],
+            'user_id': token['user_id'],
+            'quota': self.max_body_size
+            }
+        script = "window.opener.postMessage(JSON.stringify(%s), '*');" % (
+            json.dumps(client_token)
+            )
+        return ['<script>%s</script>' % script]
+
+    def get_body(self, req):
+        f = req.environ['wsgi.input']
+        try:
+            obj = json.loads(f.read(req.length))
+        except ValueError:
+            return (None, None)
+        if 'token' in obj:
+            return (obj, self.db.get_token(obj['token']))
+        return (obj, None)
+
+    def serve_blob(self, req):
+        if req.path == '/blobs/':
+            if 'ids' in req.qargs:
+                try:
+                    ids = [int(strid)
+                           for strid in req.qargs['ids'].split(",")]
+                except ValueError:
+                    return req.json_error('invalid ids')
+                return req.json_response(self.db.get_blobs_for_ids(ids))
+            return req.json_error('need query args')
+        user = req.path.split('/')[2]
+        if req.method in ['POST', 'PUT']:
+            obj, token = self.get_body(req)
+            if obj is None:
+                return req.json_error('error parsing JSON body')
+            if not (isinstance(obj, dict) and 
+                    isinstance(obj.get('data'), dict)):
+                return req.json_error('body must contain "data" object')
+            if token and token['screen_name'] == user:
+                if req.method == 'POST':
+                    self.db.update_user(token=token, data=obj['data'])
+                else:
+                    self.db.replace_user(token=token, data=obj['data'])
+                return req.json_response({'success': True})
+            else:
+                return req.json_error('Missing or invalid auth token',
+                                      status='403 Forbidden')
+        elif req.method == 'GET':
+            blob = self.db.get_blob(user)
+            if blob is None:
+                return req.json_error('blob does not exist',
+                                      status='404 Not Found')
+            return req.json_response(blob)
+
+    def post_feedback(self, req):
+        if req.method != 'POST':
+            return req.json_error('unsupported method: %s' % req.method,
+                                  status='405 Method Not Allowed')
+        obj, token = self.get_body(req)
+        if obj is None:
+            return req.json_error('error parsing JSON body')
+        if not (isinstance(obj, dict) and 
+                isinstance(obj.get('message'), basestring)):
+            return req.json_error('body must contain "message" string')
+        if not token:
+            return req.json_error('Missing or invalid auth token',
+                                  status='403 Forbidden')
+        if not self.send_feedback:
+            return req.json_error('feedback mechanism not implemented',
+                                  status='501 Not Implemented')
+        result = self.send_feedback(sender=token['screen_name'],
+                                    message=obj['message'])
+        return req.json_response(result)
+
     @allow_cross_origin
     def wsgi_app(self, environ, start_response):
         if environ['PATH_INFO'].startswith('/login/'):
             wsgiref.util.shift_path_info(environ)
             return self.twitter(environ, start_response)
 
-        request = BlobRequest(self, environ, start_response)
-        return request.process()
+        req = Request(environ, start_response)
+
+        if req.length > self.max_body_size:
+            return req.json_error('too big',
+                                  status='413 Request Entity Too Large')
+
+        if req.path.startswith('/blobs/'):
+            return self.serve_blob(req)
+        if req.path == '/who/':
+            return req.json_response(self.db.get_user_list())
+        if req.path == '/feedback/':
+            return self.post_feedback(req)
+
+        start_response('404 Not Found',
+                       [('Content-Type', 'text/plain')])
+        return ['unknown path: %s' % req.path]
