@@ -177,6 +177,9 @@ def test_blobs_query_with_good_ids():
 def test_cross_origin_support():
     resp = app.get('/blobs/', status=400)
     assert resp.headers['Access-Control-Allow-Origin'] == '*'
+    assert resp.headers['Access-Control-Allow-Methods'] == ('OPTIONS,GET,'
+                                                            'PUT,POST')
+    assert resp.headers['Access-Control-Allow-Headers'] == 'Content-Type'
 
 @apptest
 def test_post_json_blob_with_invalid_token():
@@ -279,6 +282,27 @@ def test_forged_token():
               {'token': '4c197e4a68fb2f095a000000',
                'data': {}},
               status=403)
+
+@apptest
+def test_options():
+    result = {'done': False}
+
+    def start_response(status, headers):
+        if status != '200 OK':
+            raise AssertionError()
+        if ('Content-Length', '0') not in headers:
+            raise AssertionError()
+        result['done'] = True
+
+    api.wsgi_app(
+        environ={
+            'PATH_INFO': '/',
+            'REQUEST_METHOD': 'OPTIONS'
+            },
+        start_response=start_response
+        )
+
+    assert result['done']
 
 @apptest
 def test_feedback_with_no_impl():

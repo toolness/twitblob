@@ -11,10 +11,14 @@ DEFAULT_MAX_BODY_SIZE = 20000
 DEFAULT_TOKEN_LIFETIME = datetime.timedelta(days=14)
 
 def allow_cross_origin(func):
-    header = ('Access-Control-Allow-Origin', '*')
+    aca_headers = [
+        ('Access-Control-Allow-Origin', '*'),
+        ('Access-Control-Allow-Methods', 'OPTIONS,GET,PUT,POST'),
+        ('Access-Control-Allow-Headers', 'Content-Type')
+        ]
     def wsgi_wrapper(self, environ, start_response):
         def new_start_response(status, headers):
-            start_response(status, headers + [header])
+            start_response(status, headers + aca_headers)
         return func(self, environ, new_start_response)
     return wsgi_wrapper
 
@@ -216,6 +220,10 @@ class TwitBlobApi(object):
         if req.length > self.max_body_size:
             return req.json_error('too big',
                                   status='413 Request Entity Too Large')
+
+        if req.method == "OPTIONS":
+            start_response('200 OK', [('Content-Length', '0')])
+            return []
 
         if req.path.startswith('/blobs/'):
             return self.serve_blob(req)
