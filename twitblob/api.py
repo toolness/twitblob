@@ -140,8 +140,8 @@ class TwitBlobApi(object):
             'user_id': token['user_id'],
             'quota': self.max_body_size
             }
-        script = "window.opener.postMessage(JSON.stringify(%s), '*');" % (
-            json.dumps(client_token)
+        script = "window.opener.postMessage(%s, '*');" % (
+            repr(str(json.dumps(client_token)))
             )
         return ['<script>%s</script>' % script]
 

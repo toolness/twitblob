@@ -120,7 +120,7 @@ def test_login_returns_postmessage_code():
     twitter.fake_user_id = '1'
     resp = app.get('/login/fake-callback')
     assert resp.headers['Content-Type'] == 'text/html'
-    resp.mustcontain('<script>window.opener.postMessage(JSON.stringify(')
+    resp.mustcontain('<script>window.opener.postMessage(')
 
 @apptest
 def test_login():
